@@ -107,13 +107,27 @@ def mapper(x, in_min, in_max, out_min, out_max):
     #This will map numbers onto others.
     return ((x-in_min)*(out_max -out_min)/(in_max - in_min) + out_min)
 
-def adjCompass(headingDegrees, CadjHeading):
+def compass(headingDegrees):
+    global compassInitFlag
+    global initialRawHeading
+    global intRx
+    print rx
+
+    #This sets the first compass reading to our 0*.
+    if compassInitFlag == False:
+       initialRawHeading = headingDegrees
+       compassInitFlag = True
+       print initialRawHeading
+       exit 
+
     global intialRawHeading
     if headingDegrees >= initialRawHeading:
         adjHeading = mapper(headingDegrees, initialRawHeading, 360, 0, (360-initialRawHeading))
     elif headingDegrees <= initialRawHeading:
         adjHeading = mapper(headingDegrees, 0, (initialRawHeading-1),(360-initialRawHeading), 360)
-    return CadjHeading
+    #return CadjHeading
+    
+    intRx = adjHeading
 
 def otracker():
     #Create video capture

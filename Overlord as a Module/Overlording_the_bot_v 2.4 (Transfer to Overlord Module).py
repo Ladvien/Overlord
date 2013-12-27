@@ -53,24 +53,17 @@ def rx():
         # Read the newest output from the Arduino
         if ser.readline() != "":
             rx = ser.readline()
+            #This is supposed to take only the first three digits.
+            rx = rx[:3]
                 
-        #This is supposed to take only the first three digits.
-        rx = rx[:3]
+            #This removes any EOL characters
+            rx = rx.strip()
+                
+            #If the number is less than 3 digits, then it will be included
+            #we get rid of it so we can have a clean str to int conversion.
+            rx = rx.replace(".", "")
         
-        #This removes any EOL characters
-        rx = rx.strip()
-        
-        #If the number is less than 3 digits, then it will be included
-        #we get rid of it so we can have a clean str to int conversion.
-        rx = rx.replace(".", "")
-        
-        print rx
-        overlord.intRx = int(rx)
-
-        #This sets the first compass reading to our 0*.
-        if overlord.compassInitFlag == False:
-            overlord.initialRawHeading = overlord.intRx
-            overlord.compassInitFlag = True
+            overlord.compass(int(rx))
 
 def motorTimer():
         

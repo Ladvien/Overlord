@@ -1,11 +1,6 @@
-#import cv2
-#import numpy as np
 import serial
 from time import sleep
 import threading
-#import math 
-#from math import atan2, degrees, pi 
-#import random
 import overlord
 
 #To test module.
@@ -16,7 +11,6 @@ overlord.dVariables()
 
 #Open COM port to tether the bot.
 ser = serial.Serial('COM34', 9600)
-
 
 #/////////////////// Overlord Module Settings //////////////////////
 

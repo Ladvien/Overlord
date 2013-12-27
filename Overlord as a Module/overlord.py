@@ -1,66 +1,119 @@
+#Overlord Module 1.1
+#C. Thomas Brittain
+#12/26/13
+
 import cv2
 import numpy as np
 from math import atan2, degrees, pi 
 import random
 import math 
 
-
-#For getting information from the Arduino (tx was taken by Target X :P)
-global rx
-rx = " "
-
-#For sending information to the Arduino
-global tranx
-global tranx_ready 
-
-#Flag to assuring we have something to say serially.
-tranx_ready = "No"
-#Carries what we have to say.
-tranx = ""
-
-#For converting the compass heading into an integer
-global intRx
-intRx = 0
-
-#I've not used this yet, but I plan on scaling motor-firing duration based
-#how far away from the target
-global motorDuration
-motorDuration = 0
-
-#A flag variable for threading my motor timer.
-global motorBusy
-motorBusy = "No"
-
-#Holds the frame index
-global iFrame
-iFrame = 0
-
-#How many frames before we consider the object being tracked.
-trackingFidelityLim = 0
-
-#How many frames to wait before moving.
-waitedFrames = 0
-
-#Proximity to target threshold.
-targetProximity = 0
-
-#Target xLeft, xRight limits.
-targetLeftLimit = 1
-targetRightLimit = 1
-#Target yTop, yBottom
-targetTopLimit = 1
-targetBottomLimit = 1
-
-#Helps control the gui.
-guiX = 0
-guiY = 0
-
+#Tests module
 def printo():
-    print "FUCKING TEST"
+    print "Overlord Module 1.1"
+    print "C. Thomas Brittain"
+    print "12/26/13"
+
+#///////////////// Main Control Variables /////////////////////////////
+def dVariables():
+    #For converting the compass heading into an integer
+    global intRx
+    intRx = 0
+
+    #Holds the frame index
+    global iFrame
+    iFrame = 0
+
+    #How many frames before we consider the object being tracked.
+    global trackingFidelitylim
+    trackingFidelityLim = 0
+
+    #How many frames to wait before moving.
+    global waitedFrames
+    waitedFrames = 0
+
+    #Proximity to target threshold.
+    global targetProximity
+    targetProximity = 0
+
+    #Target xLeft, xRight limits.
+    global targetLeftLimit, targetRightLimit, targetTopLimit, targetBottomLimit
+    targetLeftLimit = 1
+    targetRightLimit = 640
+
+    #Target yTop, yBottom
+    targetTopLimit = 1
+    targetBottomLimit = 480
+    
+    #Helps control the gui placement.
+    global guiX
+    global guiY
+    guiX = 0
+    guiY = 0
+    
+    #headingDegrees holds the compass heading. Lets make it an integer.
+    #OLD: headingDegrees = int(headingDegrees) 
+    global headingDegrees    
+    headingDegrees = 0
+    
+    #Used to determine whether the first compass reading has arrived.
+    global compassInitFlag
+    compassInitFlag = False
+
+    #Holds the compass raw heading at start.  This is used in adjCompass()
+    global intialRawHeading
+    intialRawHeading = 0    
+
+    #///////////////// End Main Control Variables //////////////////////////
+
+
+    #///////////////// Serial Control Variables /////////////////////////////
+    
+    #Flag to assuring we have something to say serially.
+    global tranx_ready
+    global tranx
+    tranx_ready = "No"
+    #Carries what we have to say.
+    tranx = ""
+
+    #For getting information from the Arduino (tx was taken by Target X :P)
+    global rx
+    rx = " "
+
+    #///////////////// End Serial Control Variables /////////////////////////
+
+
+
+    #///////////////// Motor Control Variables /////////////////////////////
+
+    #I've not used this yet, but I plan on scaling motor-firing duration based
+    global right, left, forward, stop
+    right = "2"
+    left = "4"
+    forward = "3"
+    stop = "5"
+
+    #how far away from the target
+    global motorDuration
+    motorDuration = 0
+
+    #A flag variable for threading my motor timer.
+    global motorBusy
+    motorBusy = "No"
+
+    #///////////////// End Motor Control Variables //////////////////////////
 
 def mapper(x, in_min, in_max, out_min, out_max):
     #This will map numbers onto others.
-    print ((x-in_min)*(out_max -out_min)/(in_max - in_min) + out_min)
+    return ((x-in_min)*(out_max -out_min)/(in_max - in_min) + out_min)
+
+def adjCompass(headingDegrees, CadjHeading):
+    global intialRawHeading
+    if headingDegrees >= initialRawHeading:
+        adjHeading = mapper(headingDegrees, initialRawHeading, 360, 0, (360-initialRawHeading))
+    elif headingDegrees <= initialRawHeading:
+        adjHeading = mapper(headingDegrees, 0, (initialRawHeading-1),(360-initialRawHeading), 360)
+    return CadjHeading
 
 def otracker():
     #Create video capture
@@ -69,14 +122,17 @@ def otracker():
     best_cnt = 1    
 
     #Globalizing variables
-    global cxAvg  #<----I can't remember why...
-    global iFrame 
-    global intRx
     global rx
     global tranx
+    global intRx
+    global cxAvg  #<----I can't remember why...
+    global iFrame 
     global shortestAngle
     global tranx_ready
     global targetBottomLimit, targetTopLimit, targetRightLimit, targetLeftLimit
+    global trackingFidelityLim
+    global left, right, forward
+    global guiX, guiY
 
     #Variable to find target angle. (Used in turning the bot toward target.)
     shortestAngle = 0
@@ -124,7 +180,7 @@ def otracker():
     
         #Convert to hsv and find range of colors
         hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
-        thresh = cv2.inRange(hsv,np.array((130, 70, 110)), np.array((190, 190, 200)))
+        thresh = cv2.inRange(hsv,np.array((0, 105, 143)), np.array((32, 175, 213)))
         thresh2 = thresh.copy()
     
         #Find contours in the threshold image
@@ -237,22 +293,19 @@ def otracker():
                 #To work the Robvio NRF24L01 code the format is like so, T: tells it to transmit this date
                 #S: tells it to print the data to the serial line after transmission, "1" is the message, and "\n"
                 #specifies that it is complete.
-                tranx = ("T:S:1\n")
-                #ser.write("T:S:1\n")
+                tranx = (forward)
                 tranx_ready = "Yes"
-                print "Forward"
+                print forward + " = Forward"
                 
             elif shortestAngle >= 1:
-                tranx = ("T:S:4\n")
-                #ser.write("T:S:1\n")
+                tranx = (right)
                 tranx_ready = "Yes"
-                print "Turn Right"
+                print right + " = Right"
                 
             elif shortestAngle < 1:
-                tranx = ("T:S:3\n")
-                #ser.write("T:S:1\n")
+                tranx = (left)
                 tranx_ready = "Yes"
-                print "Turn Left"
+                print left + " = Left"
                 
         
         #//// End Move Bot //////////////////////////////////

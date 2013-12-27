@@ -10,7 +10,7 @@ import math
 
 #Tests module
 def printo():
-    print "Overlord Module 1.1"
+    print "Overlord Module 1.3"
     print "C. Thomas Brittain"
     print "12/26/13"
 
@@ -25,12 +25,12 @@ def dVariables():
     iFrame = 0
 
     #How many frames before we consider the object being tracked.
-    global trackingFidelitylim
-    trackingFidelityLim = 0
+    global trackingFidelityLim
+    trackingFidelityLim = 150
 
     #How many frames to wait before moving.
     global waitedFrames
-    waitedFrames = 0
+    waitedFrames = 160
 
     #Proximity to target threshold.
     global targetProximity
@@ -52,7 +52,6 @@ def dVariables():
     guiY = 0
     
     #headingDegrees holds the compass heading. Lets make it an integer.
-    #OLD: headingDegrees = int(headingDegrees) 
     global headingDegrees    
     headingDegrees = 0
     
@@ -72,7 +71,7 @@ def dVariables():
     #Flag to assuring we have something to say serially.
     global tranx_ready
     global tranx
-    tranx_ready = "No"
+    tranx_ready = False
     #Carries what we have to say.
     tranx = ""
 
@@ -99,7 +98,7 @@ def dVariables():
 
     #A flag variable for threading my motor timer.
     global motorBusy
-    motorBusy = "No"
+    motorBusy = False
 
     #///////////////// End Motor Control Variables //////////////////////////
 
@@ -111,7 +110,6 @@ def compass(headingDegrees):
     global compassInitFlag
     global initialRawHeading
     global intRx
-    print rx
 
     #This sets the first compass reading to our 0*.
     if compassInitFlag == False:
@@ -120,13 +118,14 @@ def compass(headingDegrees):
        print initialRawHeading
        exit 
 
+    #This is the function that actually maps offsets the compass reading.
     global intialRawHeading
     if headingDegrees >= initialRawHeading:
         adjHeading = mapper(headingDegrees, initialRawHeading, 360, 0, (360-initialRawHeading))
     elif headingDegrees <= initialRawHeading:
         adjHeading = mapper(headingDegrees, 0, (initialRawHeading-1),(360-initialRawHeading), 360)
-    #return CadjHeading
     
+    #Here, our compass reading is loaded into intRx
     intRx = adjHeading
 
 def otracker():
@@ -308,17 +307,17 @@ def otracker():
                 #S: tells it to print the data to the serial line after transmission, "1" is the message, and "\n"
                 #specifies that it is complete.
                 tranx = (forward)
-                tranx_ready = "Yes"
+                tranx_ready = True
                 print forward + " = Forward"
                 
             elif shortestAngle >= 1:
                 tranx = (right)
-                tranx_ready = "Yes"
+                tranx_ready = True
                 print right + " = Right"
                 
             elif shortestAngle < 1:
                 tranx = (left)
-                tranx_ready = "Yes"
+                tranx_ready = True
                 print left + " = Left"
                 
         

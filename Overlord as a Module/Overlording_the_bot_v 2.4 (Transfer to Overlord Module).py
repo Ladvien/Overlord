@@ -1,11 +1,11 @@
-import cv2
-import numpy as np
+#import cv2
+#import numpy as np
 import serial
 from time import sleep
 import threading
-import math 
-from math import atan2, degrees, pi 
-import random
+#import math 
+#from math import atan2, degrees, pi 
+#import random
 import overlord
 
 #To test module.
@@ -21,22 +21,23 @@ ser = serial.Serial('COM34', 9600)
 #/////////////////// Overlord Module Settings //////////////////////
 
 #Frames passed before object is considered tracked.
-overlord.trackingFidelityLim = 150
+#overlord.trackingFidelityLim = 150
 
 #Frames to wait before moving.
-overlord.waitedFrames = 160
+#Defaults to 160
+#overlord.waitedFrames = 160
 
 #How close to does the robot need to be? Greater is less accurate.
-#defaults to 5.
+#Defaults to 5.
 #overlord.targetProximity = 5
 
 #GUI X, Y 
-#(defaults to 0, 0)
+#Defaults to 0, 0
 #overlord.guiX = 440
 #overlord.guiY = 320
 
 #Random target constraint; so target doesn't get placed too far from center.
-#defaults to 1, 640, 1, 480
+#Defaults to 1, 640, 1, 480
 #overlord.targetLeftLimit = 20
 #overlord.targetRightLimit = 400
 #overlord.targetBottomLimit = 320
@@ -63,6 +64,10 @@ def rx():
             #we get rid of it so we can have a clean str to int conversion.
             rx = rx.replace(".", "")
         
+            #Here, you pass Overlord your raw compass data.  The very first reading it gets
+            #it stores and uses to offset every other reading.  The off set amount depends on
+            #which direction you have the bot facing when it's initialized.  In short, the
+            #direction the robot is facing at the beginning is what it will call "North."
             overlord.compass(int(rx))
 
 def motorTimer():
@@ -71,16 +76,16 @@ def motorTimer():
         #This is for threading out the motor timer.  Allowing for control
         #over the motor burst duration.  There has to be both, something to write and
         #the motors can't be busy.
-        if overlord.tranx_ready == "Yes" and overlord.motorBusy == "No":
+        if overlord.tranx_ready == True and overlord.motorBusy == False:
             ser.write(overlord.tranx)
             ser.flushOutput() #Clear the buffer?
-            overlord.motorBusy = "Yes"
-            overlord.tranx_ready = "No"
-        if overlord.motorBusy == "Yes":
+            overlord.motorBusy = True
+            overlord.tranx_ready = False
+        if overlord.motorBusy == True:
             sleep(.2) #Sets the motor burst duration.
             ser.write(overlord.stop)
             sleep(.3) #Sets time inbetween motor bursts.
-            overlord.motorBusy = "No"
+            overlord.motorBusy = False
 
 #Threads OpenCV stuff.        
 OpenCV = threading.Thread(target=OpenCV)

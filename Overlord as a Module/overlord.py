@@ -1,4 +1,4 @@
-#Overlord Module 1.1
+#Overlord Module 1.5
 #C. Thomas Brittain
 #12/26/13
 
@@ -67,15 +67,20 @@ def dVariables():
 
     #///////////////// Color Selector Variables //////////////////////////
     global selection, drag_start, tracking_state, show_backproj, down_x, down_y
+    global mouseX, mouseY, trackBoxShow
 
     selection = None
     drag_start = None
     tracking_state = 0
     show_backproj = False
 
+    trackBoxShow = False
+    mouseX = 0
+    mouseY = 0
+    
     down_x = 0
     down_y = 0    
-
+    
     #///////////////// End Color Selector Variables ///////////////////////
 
     #///////////////// Serial Control Variables /////////////////////////////
@@ -117,10 +122,18 @@ def dVariables():
 #//////////////// WIP //////////////////////////////////
 def onmouse(event, x, y, flags, param):
     global selection, drag_start, tracking_state, show_backproj, down_x, down_y, selcFrame
+    global mouseX, mouseY, trackBoxShow
     x, y = np.int16([x, y]) #[sic] BUG
+    mouseX = x
+    mouseY = y
     if event == cv2.EVENT_LBUTTONDOWN:
+        down_x = x
+        down_y = y
         drag_start = (x, y)
         tracking_state = 0
+        trackBoxShow = True
+    if event == cv2.EVENT_LBUTTONUP:
+        trackBoxShow = False
     if drag_start:
         if flags & cv2.EVENT_FLAG_LBUTTON:
             h, w = selcFrame.shape[:2]
@@ -195,37 +208,28 @@ def otracker():
     shortestAngle = 0
 
     #Flag for getting a new target.
-    newTarget = "Yes"
+    newTarget = True
     
     #Dot counter. He's a hungry hippo...
     dots = 0
-    
-    #This holds the bot's centroid X & Y average
-    cxAvg = 0
-    cyAvg = 0
-
-    #Stores old position for movement assessment.
-    xOld = 0
-    yOld = 0
     
     #Clearing the serial send string.
     printRx = " "
           
     while(1):
-
         #Read the frames
         _,frame = cap.read()
     
         #Smooth it
         frame = cv2.blur(frame,(3,3))
 
-#//////////////// WIP //////////////////////////////////
         #frame for color selector.
         ret, selcFrame = cap.read()
         vis = frame.copy()
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(hsv, np.array((0., 60., 32.)), np.array((180., 255., 255.)))
         
+        #Code stolen from the camShift example.
         if selection:
             x0, y0, x1, y1 = selection
             track_window = (x0, y0, x1-x0, y1-y0)
@@ -246,19 +250,16 @@ def otracker():
             #Convert these numbers from floats in a tuple to an integer.
             cscX = int(tupX)
             cscY = int(tupY)
-            #print cscX, cscY
             if show_backproj:
                 vis[:] = prob[..., np.newaxis]
-            #try: cv2.ellipsis(vis, track_box, (0, 0, 255), 2)
-            #except: print track_box
-
-
-#//////////////// WIP //////////////////////////////////
+        
         #"printRx" is separate in case I want to parse out other sensor data
         #from the bot
         printRx = str(intRx)
+        
         #Bot heading, unmodified
         headingDeg = printRx
+        
         #Making it a number so we can play with it.
         intHeadingDeg = int(headingDeg)
         headingDeg = str(intHeadingDeg)
@@ -270,72 +271,21 @@ def otracker():
         #Incrementing frame index
         iFrame = iFrame + 1
             
-
-        
-
-#//////////////// WIP //////////////////////////////////
         #Convert to hsv and find range of colors
-        #hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
-        #thresh = cv2.inRange(hsv,np.array((0, 105, 143)), np.array((32, 175, 213)))
         thresh = mask
-        #print hsv
-        #print mask
         thresh2 = thresh.copy()
-#//////////////// WIP //////////////////////////////////
-        #Find contours in the threshold image
-        contours,hierarchy = cv2.findContours(thresh,cv2.RETR_LIST,cv2.CHAIN_APPROX_SIMPLE)
-    
-        #Finding contour with maximum area and store it as best_cnt
-        max_area = 0
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area > max_area:
-                max_area = area
-                best_cnt = cnt
 
-        #Finding centroids of best_cnt and draw a circle there
-        M = cv2.moments(best_cnt)
-        cx,cy = int(M['m10']/M['m00']), int(M['m01']/M['m00'])
-        cv2.circle(frame,(cscX,cscY),10,255,-1)
-
-        '''#OLD CODE:
-        #After X frames, it compares the bot's X and X average,
-        #if they are the same + or - 5, it assumes the bot is being tracked.
-        
-            
-        if iFrame >= trackingFidelityLim:
-            if cxAvg < (cx + targetProximity) and cxAvg > (cx - targetProximity):
-                xOld == cxAvg
-                stringXOk = "X Lock"
-            if cyAvg < (cy + targetProximity) and cyAvg > (cy - targetProximity):
-                yOld == cyAvg
-                stringYOk = "Y Lock"          
-        
-        #This is finding the average of the X cordinate.  Used for establishing
-        #a visual link with the robot.
-        #X
-        cxAvg = cxAvg + cx
-        cxAvg = cxAvg / 2
-        #Y
-        cyAvg = cyAvg + cy
-        cyAvg = cyAvg / 2
-       
-        #//Finding the Target Angle/////////////////////////////////////
-        '''
-        #Target cordinates.
         #Randomizing target.
-        if newTarget == "Yes":
+        if newTarget == True:
             tX = random.randrange(targetLeftLimit, targetRightLimit, 1)
             tY = random.randrange(targetTopLimit, targetBottomLimit, 1)
-            newTarget = "No"
-        
-        if iFrame >= 170:
-            if tX > cscX -45 and tX < cscX + 45:
-                print "Made it through the X"
-                if tY > cscY -45 and tY < cscY + 45:
-                    print "Made it through the Y"
-                    newTarget = "Yes"
-                    dots=dots+1
+            newTarget = False
+
+        #Did our robot eat the dot?
+        if tX > cscX -45 and tX < cscX + 45:
+            if tY > cscY -45 and tY < cscY + 45:
+                newTarget = True
+                dots=dots+1
         
         #Slope
         dx = cscX - tX
@@ -356,11 +306,10 @@ def otracker():
             rads = atan2(dx,-dy)
             degs = degrees(rads)
             degs = degs + 180
-            #degs = 3
+        #Quad VI
         elif tX <= cscX and tY <= cscY:
             rads = atan2(dx,-dy)
             degs = degrees(rads) + 180
-            #degs = 4
         
         #Convert float to int
         targetDegs = int(math.floor(degs))
@@ -376,9 +325,6 @@ def otracker():
         
         #//// Move Bot //////////////////////////////////////
         
-        #targetDegs = Target angle
-        #intHeadingDeg = Current Bot Angle
-        
         #Don't start moving until things are ready.
         if iFrame >= waitedFrames:
             #This compares the bot's heading with the target angle.  It must
@@ -387,27 +333,18 @@ def otracker():
             
             if shortestAngle > 180:
                 shortestAngle -= 360
-            
             if shortestAngle < -180:
                 shortestAngle += 360
-            
+            #Do we move left, right, or forward.
             if shortestAngle <= 30 and shortestAngle >= -31:
-                #To work the Robvio NRF24L01 code the format is like so, T: tells it to transmit this date
-                #S: tells it to print the data to the serial line after transmission, "1" is the message, and "\n"
-                #specifies that it is complete.
                 tranx = (forward)
                 tranx_ready = True
-                print forward + " = Forward"
-                
             elif shortestAngle >= 1:
                 tranx = (right)
                 tranx_ready = True
-                print right + " = Right"
-                
             elif shortestAngle < 1:
                 tranx = (left)
                 tranx_ready = True
-                print left + " = Left"
                 
         
         #//// End Move Bot //////////////////////////////////
@@ -415,7 +352,13 @@ def otracker():
         
         #////////CV Dawing//////////////////////////////
         
-        print cscX, cscY
+        if tracking_state > 0:
+            #Robot circle.
+            cv2.circle(frame,(cscX,cscY),10,255,-1)
+            print cscX, cscY
+            #Target angle.
+            cv2.line(frame, (tX,tY), (cscX, cscY),(0,255,0), 1)
+
         #Target circle
         cv2.circle(frame, (tX, tY), 10, (0, 0, 255), thickness=-1)
         
@@ -423,19 +366,13 @@ def otracker():
         
         #Background for text.
         cv2.rectangle(frame, (guiX+18,guiY+2), (guiX+170,guiY+160), (255,255,255), -1)
+        
+        if trackBoxShow == True:
+            cv2.rectangle(frame, (down_x, down_y), (mouseX,mouseY), (0,255,0), 1)
 
-        #Target angle.
-        cv2.line(frame, (tX,tY), (cscX, cscY),(0,255,0), 1)
         
         #Bot's X and Y is written to image
         cv2.putText(frame,str(cscX)+" cx, "+str(cscY)+" cy",(guiX+20,guiY+20),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
-        
-        #Bot's X and Y averages are written to image
-        #cv2.putText(frame,str(cxAvg)+" cxA, "+str(cyAvg)+" cyA",(guiX+20,guiY+40),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
-
-        #"Ok" is written to the screen if the X&Y are close to X&Y Avg for several iterations.
-        #cv2.putText(frame,stringXOk,(guiX+20,guiY+60),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
-        #cv2.putText(frame,stringYOk,(guiX+20,guiY+80),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
 
         #Print the compass to the frame.
         cv2.putText(frame,"Bot: "+headingDeg+" Deg",(guiX+20,guiY+100),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
@@ -446,7 +383,7 @@ def otracker():
                 
         #After the frame has been modified to hell, show it.
         cv2.imshow('frame',frame) #Color image
-        cv2.imshow('thresh',thresh2) #Black-n-White Threshold image
+        #cv2.imshow('thresh',thresh2) #Black-n-White Threshold image
 
         cv2.setMouseCallback('frame', onmouse)
         

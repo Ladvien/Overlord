@@ -10,7 +10,7 @@ import math
 
 #Tests module
 def printo():
-    print "Overlord Module 1.5"
+    print "Overlord Module 1.3"
     print "C. Thomas Brittain"
     print "12/26/13"
 
@@ -170,6 +170,7 @@ def otracker():
 
     best_cnt = 1
 
+
     #Globalizing variables
     global rx
     global tranx
@@ -185,11 +186,6 @@ def otracker():
 
     global selection, drag_start, tracking_state, show_backproj
     global selcFrame
-
-    #These are the centroid of the camShift.
-    global cscX
-    global cscY
-    cscX, cscY = 0, 0
 
     #Variable to find target angle. (Used in turning the bot toward target.)
     shortestAngle = 0
@@ -241,16 +237,11 @@ def otracker():
             prob &= mask
             term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
             track_box, track_window = cv2.CamShift(prob, track_window, term_crit)
-            #Take the centroid of the CamShift.
-            tupX, tupY = track_box[0][0], track_box[0][1]
-            #Convert these numbers from floats in a tuple to an integer.
-            cscX = int(tupX)
-            cscY = int(tupY)
-            #print cscX, cscY
+            print track_box
             if show_backproj:
                 vis[:] = prob[..., np.newaxis]
-            #try: cv2.ellipsis(vis, track_box, (0, 0, 255), 2)
-            #except: print track_box
+            try: cv2.ellipse(vis, track_box, (0, 0, 255), 1)
+            except: print track_box
 
 
 #//////////////// WIP //////////////////////////////////
@@ -296,13 +287,10 @@ def otracker():
         #Finding centroids of best_cnt and draw a circle there
         M = cv2.moments(best_cnt)
         cx,cy = int(M['m10']/M['m00']), int(M['m01']/M['m00'])
-        cv2.circle(frame,(cscX,cscY),10,255,-1)
-
-        '''#OLD CODE:
+        cv2.circle(frame,(cx,cy),10,255,-1)
+    
         #After X frames, it compares the bot's X and X average,
         #if they are the same + or - 5, it assumes the bot is being tracked.
-        
-            
         if iFrame >= trackingFidelityLim:
             if cxAvg < (cx + targetProximity) and cxAvg > (cx - targetProximity):
                 xOld == cxAvg
@@ -310,7 +298,7 @@ def otracker():
             if cyAvg < (cy + targetProximity) and cyAvg > (cy - targetProximity):
                 yOld == cyAvg
                 stringYOk = "Y Lock"          
-        
+            
         #This is finding the average of the X cordinate.  Used for establishing
         #a visual link with the robot.
         #X
@@ -319,9 +307,9 @@ def otracker():
         #Y
         cyAvg = cyAvg + cy
         cyAvg = cyAvg / 2
-       
+        
         #//Finding the Target Angle/////////////////////////////////////
-        '''
+        
         #Target cordinates.
         #Randomizing target.
         if newTarget == "Yes":
@@ -330,34 +318,34 @@ def otracker():
             newTarget = "No"
         
         if iFrame >= 170:
-            if tX > cscX -45 and tX < cscX + 45:
+            if tX > cxAvg -45 and tX < cxAvg + 45:
                 print "Made it through the X"
-                if tY > cscY -45 and tY < cscY + 45:
+                if tY > cyAvg -45 and tY < cyAvg + 45:
                     print "Made it through the Y"
                     newTarget = "Yes"
                     dots=dots+1
         
         #Slope
-        dx = cscX - tX
-        dy = cscY - tY
+        dx = cxAvg - tX
+        dy = cyAvg - tY
         
         #Quad I -- Good
-        if tX >= cscX and tY <= cscY:
+        if tX >= cxAvg and tY <= cyAvg:
             rads = atan2(dy,dx)
             degs = degrees(rads)
             degs = degs - 90
         #Quad II -- Good
-        elif tX >= cscX and tY >= cscY:
+        elif tX >= cxAvg and tY >= cyAvg:
             rads = atan2(dx,dy)
             degs = degrees(rads)
             degs = (degs * -1)
         #Quad III
-        elif tX <= cscX and tY >= cscY:
+        elif tX <= cxAvg and tY >= cyAvg:
             rads = atan2(dx,-dy)
             degs = degrees(rads)
             degs = degs + 180
             #degs = 3
-        elif tX <= cscX and tY <= cscY:
+        elif tX <= cxAvg and tY <= cyAvg:
             rads = atan2(dx,-dy)
             degs = degrees(rads) + 180
             #degs = 4
@@ -415,7 +403,6 @@ def otracker():
         
         #////////CV Dawing//////////////////////////////
         
-        print cscX, cscY
         #Target circle
         cv2.circle(frame, (tX, tY), 10, (0, 0, 255), thickness=-1)
         
@@ -425,17 +412,17 @@ def otracker():
         cv2.rectangle(frame, (guiX+18,guiY+2), (guiX+170,guiY+160), (255,255,255), -1)
 
         #Target angle.
-        cv2.line(frame, (tX,tY), (cscX, cscY),(0,255,0), 1)
+        cv2.line(frame, (tX,tY), (cxAvg,cyAvg),(0,255,0), 1)
         
         #Bot's X and Y is written to image
-        cv2.putText(frame,str(cscX)+" cx, "+str(cscY)+" cy",(guiX+20,guiY+20),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
+        cv2.putText(frame,str(cx)+" cx, "+str(cy)+" cy",(guiX+20,guiY+20),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
         
         #Bot's X and Y averages are written to image
-        #cv2.putText(frame,str(cxAvg)+" cxA, "+str(cyAvg)+" cyA",(guiX+20,guiY+40),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
+        cv2.putText(frame,str(cxAvg)+" cxA, "+str(cyAvg)+" cyA",(guiX+20,guiY+40),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
 
         #"Ok" is written to the screen if the X&Y are close to X&Y Avg for several iterations.
-        #cv2.putText(frame,stringXOk,(guiX+20,guiY+60),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
-        #cv2.putText(frame,stringYOk,(guiX+20,guiY+80),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
+        cv2.putText(frame,stringXOk,(guiX+20,guiY+60),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
+        cv2.putText(frame,stringYOk,(guiX+20,guiY+80),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
 
         #Print the compass to the frame.
         cv2.putText(frame,"Bot: "+headingDeg+" Deg",(guiX+20,guiY+100),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
@@ -445,7 +432,7 @@ def otracker():
         cv2.putText(frame,"Dots Ate: "+ str(dots),(guiX+20,guiY+140),cv2.FONT_HERSHEY_COMPLEX_SMALL,.7,(0,0,0))
                 
         #After the frame has been modified to hell, show it.
-        cv2.imshow('frame',frame) #Color image
+        cv2.imshow('frame',vis) #Color image
         cv2.imshow('thresh',thresh2) #Black-n-White Threshold image
 
         cv2.setMouseCallback('frame', onmouse)

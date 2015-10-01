@@ -18,4 +18,4 @@ Details can be found here:
 
 http://www.instructables.com/id/How-to-Track-your-Robot-with-OpenCV/
 
-http://letsmakerobots.com/node/38208
+
